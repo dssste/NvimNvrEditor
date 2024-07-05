@@ -1,8 +1,8 @@
 Use Nvim as your Unity code editor.
 
-This package only does two things:
-1. Goes to the file and line when double clicking files / console messages from the Unity editor (requires [nvr](https://github.com/mhinz/neovim-remote))*
-2. Generates csproj. and sln files for LSP (same way as the [old vscode package](https://github.com/Unity-Technologies/com.unity.ide.vscode))
+This package:
+1. Opens file & line in Nvim from the Unity editor (requires [nvr](https://github.com/mhinz/neovim-remote))*
+2. Generates csproj. and sln files (same way as the [old vscode package](https://github.com/Unity-Technologies/com.unity.ide.vscode))
 
 *Only supports Windows and Windows Terminal as of now.
 
