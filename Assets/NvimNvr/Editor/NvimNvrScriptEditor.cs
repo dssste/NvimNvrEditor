@@ -1,9 +1,6 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Runtime.InteropServices;
 using Unity.CodeEditor;
 using UnityEditor;
 using UnityEngine;
@@ -11,22 +8,7 @@ using UnityEngine;
 namespace dss.editor.nvimnvr{
 	[InitializeOnLoad]
 	public class NvimNvrScriptEditor: IExternalCodeEditor{
-		private const string nvim_address = "127.0.0.1";
-		private const int nvim_port = 25884;
-		private const string script_editor_process_name = "WindowsTerminal";
-		private static readonly string nvr_argument = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
-		private static readonly string script_editor_start_argument = $"start wt -w 0 nt nvim $(File) +$(Line) -c \"Proj {{0}}\" --listen {nvim_address}:{nvim_port}";
-
 		private ProjectGeneration projectGeneration;
-
-		private IntPtr scriptEditorWindowHandle{
-			get{
-				var process = Process.GetProcessesByName(script_editor_process_name).FirstOrDefault();
-				return process == null
-					? IntPtr.Zero
-					: process.MainWindowHandle;
-			}
-		}
 
 		static string[] defaultExtensions => EditorSettings.projectGenerationBuiltinExtensions
 			.Concat(EditorSettings.projectGenerationUserExtensions)
@@ -92,12 +74,6 @@ namespace dss.editor.nvimnvr{
 			}
 		}
 
-		public void CreateIfDoesntExist(){
-			if(!projectGeneration.SolutionExists()){
-				projectGeneration.Sync();
-			}
-		}
-
 		public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importedFiles){
 			(projectGeneration.AssemblyNameProvider as IPackageInfoCache)?.ResetPackageInfoCache();
 			projectGeneration.SyncIfNeeded(addedFiles.Union(deletedFiles).Union(movedFiles).Union(movedFromFiles).ToList(), importedFiles);
@@ -109,55 +85,24 @@ namespace dss.editor.nvimnvr{
 			projectGeneration.Sync();
 		}
 
-		[DllImport("user32.dll")]
-		private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-		private bool isNvimRunning => IPGlobalProperties
-			.GetIPGlobalProperties()
-			.GetActiveTcpConnections()
-			.Any(tcpi => tcpi.LocalEndPoint.Port == nvim_port && tcpi.LocalEndPoint.Address.ToString() == nvim_address);
-
 		public bool OpenProject(string path, int line, int column){
-			if(path != "" && (!SupportsExtension(path) || !File.Exists(path))) return false;
-			if(line == -1) line = 1;
-			if(column == -1) column = 0;
-			if(isNvimRunning){
-				Process
-					.Start(new ProcessStartInfo{
-						FileName = "nvr",
-						Arguments = CodeEditor.ParseArgument(nvr_argument, path, line, column),
-						CreateNoWindow = true,
-						UseShellExecute = false,
-					})
-					.WaitForExit();
-			}else{
-				var arg = string.Format(script_editor_start_argument, projectGeneration.ProjectDirectory);
-				arg = CodeEditor.ParseArgument(arg, path, line, column);
-				Process
-					.Start(new ProcessStartInfo{
-						FileName = "cmd.exe",
-						Arguments = "/c " + arg,
-						CreateNoWindow = true,
-						UseShellExecute = false,
-					})
-					.WaitForExit();
-			}
-			SetForegroundWindow(scriptEditorWindowHandle);
-			return true;
-		}
-
-		static bool SupportsExtension(string path){
 			var extension = Path.GetExtension(path);
 			if(string.IsNullOrEmpty(extension)) return false;
+			if(!HandledExtensions.Contains(extension.TrimStart('.'))) return false;
+			if(!File.Exists(path)) return false;
 
-			return HandledExtensions.Contains(extension.TrimStart('.'));
+			if(line == -1) line = 1;
+			if(column == -1) column = 0;
+			return TermDispatch.Open(projectGeneration.ProjectDirectory, path, line, column);
 		}
 
 		static NvimNvrScriptEditor(){
 			var editor = new NvimNvrScriptEditor();
 			editor.projectGeneration = new ProjectGeneration(Directory.GetParent(Application.dataPath).FullName);
 			CodeEditor.Register(editor);
-			editor.CreateIfDoesntExist();
+			if(!editor.projectGeneration.SolutionExists()){
+				editor.projectGeneration.Sync();
+			}
 		}
 
 		public void Initialize(string editorInstallationPath){}
