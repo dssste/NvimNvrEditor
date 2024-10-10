@@ -5,7 +5,16 @@ This package:
 2. Generates csproj. and sln files (same way as the [old vscode package](https://github.com/Unity-Technologies/com.unity.ide.vscode))
 
 ### OS & Terminal Support
-Works out of the box on Windows Terminal (Windows) and Kitty (Linux). Currently, there are no configuration files to set your terminal. Refer to ```TermDispatch.cs``` for more details on the relevant commands.
+Works out of the box with Windows Terminal (Windows) and Kitty (Linux).
+
+Limitations on Windows:
+1. Does not allow setting alternative terminal emulators (should be easy to impelement)
+2. Does not allow passing command to Neovim by ```-c``` (should be easy to impelement)
+
+On Linux:
+1. Does not bring the terminal window to front when clicking files from within the Unity Editor (haven't look at how to do this yet)
+
+Refer to ```TermDispatch.cs``` for more details on the relevant commands and implementations.
 
 ### Install
 1. Open the Package Manager from Window > Package Manager
