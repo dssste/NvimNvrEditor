@@ -4,5 +4,8 @@
   "displayName": "NvimNvr",
   "description": "Nvim as code editor powerd by nvr",
   "unity": "2020.3",
+  "author": {
+    "name": "dss steve"
+  },
   "dependencies": {}
 }
