@@ -43,6 +43,7 @@ namespace dss.editor.nvimnvr{
 		}
 
 		public void OnGUI(){
+			TermDispatch.CommandFields();
 			EditorGUILayout.LabelField("Generate .csproj files for:");
 			EditorGUI.indentLevel++;
 			SettingsButton(ProjectGenerationFlag.Embedded, "Embedded packages", "");
@@ -52,18 +53,13 @@ namespace dss.editor.nvimnvr{
 			SettingsButton(ProjectGenerationFlag.BuiltIn, "Built-in packages", "");
 			SettingsButton(ProjectGenerationFlag.LocalTarBall, "Local tarball", "");
 			SettingsButton(ProjectGenerationFlag.Unknown, "Packages from unknown sources", "");
-			RegenerateProjectFiles();
-			EditorGUI.indentLevel--;
-
-			HandledExtensionsString = EditorGUILayout.TextField(new GUIContent("Extensions handled: "), HandledExtensionsString);
-		}
-
-		private void RegenerateProjectFiles(){
 			var rect = EditorGUI.IndentedRect(EditorGUILayout.GetControlRect(new GUILayoutOption[] { }));
 			rect.width = 252;
 			if(GUI.Button(rect, "Regenerate project files")){
 				projectGeneration.Sync();
 			}
+			EditorGUI.indentLevel--;
+			HandledExtensionsString = EditorGUILayout.TextField(new GUIContent("Extensions handled: "), HandledExtensionsString);
 		}
 
 		private void SettingsButton(ProjectGenerationFlag preference, string guiMessage, string toolTip){
