@@ -5,16 +5,19 @@ This package:
 2. Generates csproj. and sln files (same way as the [old vscode package](https://github.com/Unity-Technologies/com.unity.ide.vscode))
 
 ### OS & Terminal Support
-Works out of the box with Windows Terminal (Windows) and Kitty (Linux).
+Windows:
+- Tested on Windows 10 with Windows Terminal.
+- **Terminal selection**: Only WT is supported.
+- **Neovim ```-c``` support**: Can’t pass commands yet, but this is easy to add.
+- **Bring to front**: Focuses the first WT window. Can hit the wrong one, and does not handle tabs.
 
-Limitations on Windows:
-1. Does not allow setting alternative terminal emulators (should be easy to impelement)
-2. Does not allow passing command to Neovim by ```-c``` (should be easy to impelement)
+Linux:
+- Tested on NixOS with Cinnamon and Kitty.
+- **Terminal selection**: Can change the terminal emulator in Edit > Preferences > External Tools.
+- **Neovim ```-c``` support**: Allows passing one command to Neovim on startup. The command can be set in Preferences.
+- **Bring to front**: Precisely finds the window using pid. Requires ```wmctrl``` with some heuristics made during implementation.
 
-On Linux:
-1. Does not bring the terminal window to front when clicking files from within the Unity Editor (haven't look at how to do this yet)
-
-Refer to ```TermDispatch.cs``` for more details on the relevant commands and implementations.
+Check ```TermDispatch.cs``` for more details.
 
 ### Install
 1. Open the Package Manager from Window > Package Manager
