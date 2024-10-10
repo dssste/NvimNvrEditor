@@ -1,6 +1,6 @@
 {
   "name": "com.dss.nvimnvr",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "displayName": "NvimNvr",
   "description": "Nvim as code editor powerd by nvr",
   "unity": "2020.3",

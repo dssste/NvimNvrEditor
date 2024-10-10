@@ -1,31 +1,25 @@
-using System.Linq;
-using System.Net.NetworkInformation;
+using System.Diagnostics;
 using System.IO;
+using Unity.CodeEditor;
 using UnityEditor;
 using UnityEngine;
+using System.Text.RegularExpressions;
 
 #if (UNITY_EDITOR_WIN)
 
 using System;
-using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
-using Unity.CodeEditor;
+using System.Net.NetworkInformation;
 
 #elif (UNITY_EDITOR_LINUX)
 
-using System.Diagnostics;
-using Unity.CodeEditor;
 
 #endif
 
 public class TermDispatch{
 		private const string nvim_address = "127.0.0.1";
 		private const int nvim_port = 25884;
-
-		private static bool isNvimRunning => IPGlobalProperties
-			.GetIPGlobalProperties()
-			.GetActiveTcpConnections()
-			.Any(tcpi => tcpi.LocalEndPoint.Port == nvim_port && tcpi.LocalEndPoint.Address.ToString() == nvim_address);
 
 		public static void CommandFields(){
 			CommandFieldsByPlatform();
@@ -42,6 +36,12 @@ public class TermDispatch{
 		private const string script_editor_process_name = "WindowsTerminal";
 		private static readonly string nvr_argument = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 		private static readonly string script_editor_start_argument = $"start wt -w 0 nt nvim $(File) +$(Line) -c \"cd {{0}}\" --listen {nvim_address}:{nvim_port}";
+
+		private static bool isNvimRunning => IPGlobalProperties
+			.GetIPGlobalProperties()
+			.GetActiveTcpConnections()
+			.Any(tcpi => tcpi.LocalEndPoint.Port == nvim_port && tcpi.LocalEndPoint.Address.ToString() == nvim_address);
+
 		[DllImport("user32.dll")]
 		private static extern bool SetForegroundWindow(IntPtr hWnd);
 
@@ -96,13 +96,76 @@ public class TermDispatch{
 			set => EditorPrefs.SetString("nvim_nvr_extra_dash_c_string", value);
 		}
 
+		private static bool TryGetNvimPid(out int pid){
+			var process = Process.Start(new ProcessStartInfo{
+				FileName = "bash",
+				Arguments = $"-c \"ss -tulpn | grep {nvim_address}:{nvim_port}\"",
+				RedirectStandardOutput = true,
+				UseShellExecute = false,
+				CreateNoWindow = true
+			});
+			var match = Regex.Match(process.StandardOutput.ReadToEnd(), @"pid=(\d+)");
+			if(match.Success){
+				return int.TryParse(match.Groups[1].Value, out pid);
+			}else{
+				pid = -1;
+				return false;
+			}
+		}
+
+		private static bool TryGetTermPid(int pid, out int ppid){
+			ppid = -1;
+			for(int i = 0; i < 12; i++){
+				var process = Process.Start(new ProcessStartInfo{
+					FileName = "bash",
+					Arguments = $"-c \"ps -o ppid=,comm= -p {pid}\"",
+					RedirectStandardOutput = true,
+					UseShellExecute = false,
+					CreateNoWindow = true
+				});
+				var output = process.StandardOutput.ReadToEnd().Trim();
+				if(string.IsNullOrWhiteSpace(output)){
+					return false;
+				}
+				var splits = output.Split(' ');
+				if(splits.Length < 2){
+					return true;
+				}
+				if(splits[1].Contains(term_emulator)){
+					ppid = pid;
+					return true;
+				}else{
+					pid = int.Parse(splits[0]);
+				}
+			}
+			return false;
+		}
+
+		private static bool TryGetWindowId(int pid, out string wid){
+			var process = Process.Start(new ProcessStartInfo{
+				FileName = "bash",
+				Arguments = $"-c \"wmctrl -lp | grep {pid}\"",
+				RedirectStandardOutput = true,
+				UseShellExecute = false,
+				CreateNoWindow = true
+			});
+			var output = process.StandardOutput.ReadToEnd();
+			if(output.Contains(pid.ToString())){
+				wid = output.Split(' ')[0];
+				return true;
+			}else{
+				wid = "";
+				return false;
+			}
+		}
+
 		private static void CommandFieldsByPlatform(){
 			term_emulator = EditorGUILayout.TextField(new GUIContent("terminal: "), term_emulator);
 			extra_dash_c = EditorGUILayout.TextField(new GUIContent("nvim -c: "), extra_dash_c);
 		}
 
 		private static bool OpenByPlatform(string projectPath, string filePath, int line, int column){
-			if(isNvimRunning){
+			if(TryGetNvimPid(out var pid)){
 				var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
 				Process.Start(new ProcessStartInfo{
 					FileName = "nvr",
@@ -110,6 +173,15 @@ public class TermDispatch{
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				});
+
+				if(TryGetTermPid(pid, out var ppid) && TryGetWindowId(ppid, out var wid)){
+					Process.Start(new ProcessStartInfo{
+						FileName = "wmctrl",
+						Arguments = "-ia " + wid,
+						CreateNoWindow = true,
+						UseShellExecute = false,
+					});
+				}
 			}else{
 				var dash_c = $"cd {projectPath}";
 				if(!string.IsNullOrWhiteSpace(extra_dash_c)){
