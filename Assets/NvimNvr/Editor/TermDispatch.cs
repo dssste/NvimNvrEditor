@@ -200,5 +200,14 @@ public class TermDispatch{
 		}
 
 
+#elif(UNITY_EDITOR_OSX)
+
+
+		private static void CommandFieldsByPlatform(){}
+		private static bool OpenByPlatform(string projectPath, string filePath, int line, int column){
+			return false;
+		}
+
+
 #endif
 }
