@@ -206,7 +206,7 @@ public class TermDispatch{
 #elif(UNITY_EDITOR_OSX)
 
 
-		private const string default_term_emulator = "kitty -1";
+		private const string default_term_emulator = "kitty -1 -d ~/";
 		private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
 		private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 
