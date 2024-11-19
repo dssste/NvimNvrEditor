@@ -206,14 +206,7 @@ public class TermDispatch{
 #elif(UNITY_EDITOR_OSX)
 
 
-		private static string _PATH;
-		private static string _http_proxy;
-		private static string _https_proxy;
-		private static string PATH => _PATH ??= GetInteractiveEnvironmentVariable("PATH");
-		private static string http_proxy => _http_proxy ??= GetInteractiveEnvironmentVariable("http_proxy");
-		private static string https_proxy => _https_proxy ??= GetInteractiveEnvironmentVariable("https_proxy");
-
-		private const string default_term_emulator = "kitty";
+		private const string default_term_emulator = "kitty -1";
 		private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
 		private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 
@@ -234,24 +227,6 @@ public class TermDispatch{
 			set => EditorPrefs.SetString("nvim_nvr_extra_dash_c_string", value);
 		}
 
-		private static string GetInteractiveEnvironmentVariable(string name){
-			var startInfo = new ProcessStartInfo{
-				FileName = "zsh",
-				Arguments = $"-lic 'echo ${name}'",
-				RedirectStandardOutput = true,
-				UseShellExecute = false,
-				CreateNoWindow = true,
-			};
-			using(var process = Process.Start(startInfo)){
-				if(process == null) return null;
-
-				process.WaitForExit();
-				using(var reader = process.StandardOutput){
-					return reader.ReadToEnd().Trim();
-				}
-			}
-		}
-
 		private static void CommandFieldsByPlatform(){
 			term_emulator = EditorGUILayout.TextField(new GUIContent("terminal: "), term_emulator);
 			extra_dash_c = EditorGUILayout.TextField(new GUIContent("nvim -c: "), extra_dash_c);
@@ -260,7 +235,7 @@ public class TermDispatch{
 		private static bool TryGetNvimPid(out object pid){
 			var psi = new ProcessStartInfo{
 				FileName = "zsh",
-				Arguments = $"-c ' netstat -an | grep LISTEN | grep {nvim_address}.{nvim_port}'",
+				Arguments = $"-c 'netstat -an | grep LISTEN | grep {nvim_address}.{nvim_port}'",
 				RedirectStandardOutput = true,
 				UseShellExecute = false,
 				CreateNoWindow = true
@@ -283,11 +258,10 @@ public class TermDispatch{
 				var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
 				var psi = new ProcessStartInfo{
 					FileName = "zsh",
-					Arguments = $"-c 'nvr {arg}'",
+					Arguments = $"-lic 'nvr {arg}'",
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				};
-				psi.EnvironmentVariables["PATH"] = PATH;
 				using(var process = Process.Start(psi)){
 					if(process == null) return false;
 				}
@@ -299,14 +273,11 @@ public class TermDispatch{
 				var arg = string.Format(term_start_args, dash_c);
 				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
 				var psi = new ProcessStartInfo{
-					FileName = term_emulator,
-					Arguments = arg,
+					FileName = "zsh",
+					Arguments = $"-lic '{term_emulator} {arg}'",
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				};
-				psi.EnvironmentVariables["PATH"] = PATH;
-				psi.EnvironmentVariables["http_proxy"] = http_proxy;
-				psi.EnvironmentVariables["https_proxy"] = https_proxy;
 				using(var process = Process.Start(psi)){
 					if(process == null) return false;
 				}
