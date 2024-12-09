@@ -12,7 +12,7 @@ Windows:
 Linux:
 - Tested on NixOS with Cinnamon and Kitty.
 - **Terminal selection**: Can change the terminal emulator in Edit > Preferences > External Tools.
-- **Bring to front**: Precisely finds the window using pid. Requires ```wmctrl```, and some heuristics were made during implementation.
+- **Bring to front**: Precisely finds the window using pid. Requires ```wmctrl```.
 - **Neovim ```-c``` support**: Allows passing commands to Neovim on startup. The command can be set in Preferences.
 
 MacOS:
