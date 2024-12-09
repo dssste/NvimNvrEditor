@@ -248,7 +248,7 @@ public class TermDispatch{
 			}
 		}
 
-		private static bool FindKittySocket(out string socket){
+		private static bool TryGetKittySocket(out string socket){
 			var tmpDir = new DirectoryInfo("/tmp");
 			var kittySocket = tmpDir.GetFiles("mykitty-*")
 				.OrderByDescending(f => f.LastWriteTime)
@@ -263,29 +263,37 @@ public class TermDispatch{
 		}
 
 		private static bool OpenByPlatform(string projectPath, string filePath, int line, int column){
-			if(TryGetNvimPid(out var pid)){
-				var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
-				var psi = new ProcessStartInfo{
-					FileName = "zsh",
-					Arguments = $"-lic 'nvr {arg}'",
-					CreateNoWindow = true,
-					UseShellExecute = false,
-				};
-				using(var process = Process.Start(psi)){
-					if(process == null) return false;
+			if(TryGetKittySocket(out var socket)){
+				if(TryGetNvimPid(out var pid)){
+					var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
+					var psi = new ProcessStartInfo{
+						FileName = "zsh",
+						Arguments = $"-lic 'nvr {arg}'",
+						CreateNoWindow = true,
+						UseShellExecute = false,
+					};
+					using(var process = Process.Start(psi)){
+						if(process == null) return false;
+					}
+				}else{
+					var arg = string.Format(term_start_args, extra_dash_c);
+					arg = CodeEditor.ParseArgument(arg, filePath, line, column);
+					var psi = new ProcessStartInfo{
+						FileName = term_emulator,
+						Arguments = $"@ --to unix:{socket} launch --type=tab --cwd={projectPath} zsh -lic '{arg}'",
+						CreateNoWindow = true,
+						UseShellExecute = false,
+					};
+					using(var process = Process.Start(psi)){
+						if(process == null) return false;
+					}
 				}
-			}else if(FindKittySocket(out var socket)){
-				var arg = string.Format(term_start_args, extra_dash_c);
-				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
-				var psi = new ProcessStartInfo{
+				using(var focusProcess = Process.Start(new ProcessStartInfo{
 					FileName = term_emulator,
-					Arguments = $"@ --to unix:{socket} launch --type=tab --cwd={projectPath} zsh -lic '{arg}'",
+					Arguments = $"@ --to unix:{socket} focus-window",
 					CreateNoWindow = true,
 					UseShellExecute = false,
-				};
-				using(var process = Process.Start(psi)){
-					if(process == null) return false;
-				}
+				})){}
 			}else{
 				var dash_c = $"cd {projectPath}";
 				if(!string.IsNullOrWhiteSpace(extra_dash_c)){
