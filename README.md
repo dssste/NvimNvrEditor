@@ -6,16 +6,20 @@ This package:
 
 ### OS & Terminal Support
 Windows:
-- Tested on Windows 10 with Windows Terminal.
-- **Terminal selection**: Only WT is supported.
-- **Neovim ```-c``` support**: Can’t pass commands yet, but this is easy to add.
-- **Bring to front**: Focuses the first WT window. Can hit the wrong one, and does not handle tabs.
+- Only supports Windows Terminal.
+- **Bring to front**: Focuses the first WT window. May hit the wrong one, and does not handle tabs.
 
 Linux:
 - Tested on NixOS with Cinnamon and Kitty.
 - **Terminal selection**: Can change the terminal emulator in Edit > Preferences > External Tools.
-- **Neovim ```-c``` support**: Allows passing one command to Neovim on startup. The command can be set in Preferences.
 - **Bring to front**: Precisely finds the window using pid. Requires ```wmctrl```, and some heuristics were made during implementation.
+- **Neovim ```-c``` support**: Allows passing commands to Neovim on startup. The command can be set in Preferences.
+
+MacOS:
+- Only supports Kitty
+- (Optional) kitty remote control, by setting conf ```allow_remote_control yes``` and ```listen_on unix:/tmp/mykitty```
+- **Neovim ```-c``` support**: Allows passing commands to Neovim on startup. The command can be set in Preferences.
+- **Bring to front**: Precisely focuses the Kitty window with kitty remote control
 
 Check ```TermDispatch.cs``` for more details.
 
