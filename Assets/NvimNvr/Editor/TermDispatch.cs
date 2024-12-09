@@ -3,7 +3,6 @@ using System.IO;
 using Unity.CodeEditor;
 using UnityEditor;
 using UnityEngine;
-using System.Text.RegularExpressions;
 
 #if (UNITY_EDITOR_WIN)
 
@@ -11,12 +10,15 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
 
 #elif (UNITY_EDITOR_LINUX)
 
+using System.Text.RegularExpressions;
 
 #elif (UNITY_EDITOR_OSX)
 
+using System.Linq;
 
 #endif
 
@@ -206,20 +208,13 @@ public class TermDispatch{
 #elif(UNITY_EDITOR_OSX)
 
 
-		private const string default_term_emulator = "kitty -1 -d ~/";
+		private const string default_term_emulator = "kitty";
 		private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
 		private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 
 		private static string term_emulator{
-			get{
-				var term = EditorPrefs.GetString("nvim_nvr_term_emulator");
-				if(string.IsNullOrWhiteSpace(term)){
-					return default_term_emulator;
-				}else{
-					return term;
-				}
-			}
-			set => EditorPrefs.SetString("nvim_nvr_term_emulator", value);
+			get => default_term_emulator;
+			set{}
 		}
 
 		private static string extra_dash_c{
@@ -253,12 +248,38 @@ public class TermDispatch{
 			}
 		}
 
+		private static bool FindKittySocket(out string socket){
+			var tmpDir = new DirectoryInfo("/tmp");
+			var kittySocket = tmpDir.GetFiles("mykitty-*")
+				.OrderByDescending(f => f.LastWriteTime)
+				.FirstOrDefault();
+			if(kittySocket == null){
+				socket = "";
+				return false;
+			}else{
+				socket = kittySocket.FullName;
+				return true;
+			}
+		}
+
 		private static bool OpenByPlatform(string projectPath, string filePath, int line, int column){
 			if(TryGetNvimPid(out var pid)){
 				var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
 				var psi = new ProcessStartInfo{
 					FileName = "zsh",
 					Arguments = $"-lic 'nvr {arg}'",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+				};
+				using(var process = Process.Start(psi)){
+					if(process == null) return false;
+				}
+			}else if(FindKittySocket(out var socket)){
+				var arg = string.Format(term_start_args, extra_dash_c);
+				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
+				var psi = new ProcessStartInfo{
+					FileName = term_emulator,
+					Arguments = $"@ --to unix:{socket} launch --type=tab --cwd={projectPath} zsh -lic '{arg}'",
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				};
@@ -274,7 +295,7 @@ public class TermDispatch{
 				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
 				var psi = new ProcessStartInfo{
 					FileName = "zsh",
-					Arguments = $"-lic '{term_emulator} {arg}'",
+					Arguments = $"-lic '{term_emulator} -d ~/ {arg}'",
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				};
