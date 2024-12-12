@@ -31,9 +31,7 @@ public class TermDispatch{
 		}
 
 		public static bool Open(string projectPath, string filePath, int line, int column){
-			var fp = Path.GetFullPath(filePath);
-			UnityEngine.Debug.Log($"Opening {filePath}, {fp} at {line}:{column}");
-			return OpenByPlatform(Path.Join(projectPath, "Assets"), filePath, line, column);
+			return OpenByPlatform(Path.Join(projectPath, "Assets"), Path.GetFullPath(filePath), line, column);
 		}
 
 #if(UNITY_EDITOR_WIN)
