@@ -279,7 +279,7 @@ public class TermDispatch{
 					arg = CodeEditor.ParseArgument(arg, filePath, line, column);
 					var psi = new ProcessStartInfo{
 						FileName = term_emulator,
-						Arguments = $"@ --to unix:{socket} launch --type=tab --cwd={projectPath} zsh -lic '{arg}'",
+						Arguments = $"@ --to unix:{socket} launch --type=os-window --cwd={projectPath} zsh -lic '{arg}'",
 						CreateNoWindow = true,
 						UseShellExecute = false,
 					};
