@@ -18,23 +18,24 @@ using System.Text.RegularExpressions;
 
 #elif (UNITY_EDITOR_OSX)
 
+using System.Collections.Generic;
 using System.Linq;
 
 #endif
 
-public class TermDispatch{
-		private const string nvim_address = "127.0.0.1";
-		private const int nvim_port = 25884;
+public class TermDispatch {
+	private const string nvim_address = "127.0.0.1";
+	private const int nvim_port = 25884;
 
-		public static void CommandFields(){
-			CommandFieldsByPlatform();
-		}
+	public static void CommandFields() {
+		CommandFieldsByPlatform();
+	}
 
-		public static bool Open(string projectPath, string filePath, int line, int column){
-			return OpenByPlatform(Path.Join(projectPath, "Assets"), Path.GetFullPath(filePath), line, column);
-		}
+	public static bool Open(string projectPath, string filePath, int line, int column) {
+		return OpenByPlatform(Path.Join(projectPath, "Assets"), Path.GetFullPath(filePath), line, column);
+	}
 
-#if(UNITY_EDITOR_WIN)
+#if (UNITY_EDITOR_WIN)
 
 
 		private const string script_editor_process_name = "WindowsTerminal";
@@ -83,7 +84,7 @@ public class TermDispatch{
 		}
 
 
-#elif(UNITY_EDITOR_LINUX)
+#elif (UNITY_EDITOR_LINUX)
 
 
 		private const string default_term_emulator = "kitty";
@@ -204,114 +205,169 @@ public class TermDispatch{
 		}
 
 
-#elif(UNITY_EDITOR_OSX)
+#elif (UNITY_EDITOR_OSX)
 
 
-		private const string default_term_emulator = "kitty";
-		private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
-		private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 
-		private static string term_emulator{
-			get => default_term_emulator;
-			set{}
+	private static readonly List<string> term_emulator_options = new() { "kitty", "ghostty" };
+	private const string default_term_emulator = "kitty";
+	private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
+	private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
+
+	private static string term_emulator {
+		get => EditorPrefs.GetString("nvim_nvr_term_emulator", default_term_emulator);
+		set => EditorPrefs.SetString("nvim_nvr_term_emulator", value);
+	}
+
+	private static string extra_dash_c {
+		get => EditorPrefs.GetString("nvim_nvr_extra_dash_c_string", "");
+		set => EditorPrefs.SetString("nvim_nvr_extra_dash_c_string", value);
+	}
+
+	private static void CommandFieldsByPlatform() {
+		var selectedIndex = 0;
+		if (term_emulator_options.Contains(term_emulator)) {
+			selectedIndex = term_emulator_options.IndexOf(term_emulator);
 		}
+		selectedIndex = EditorGUILayout.Popup(new GUIContent("terminal: "), selectedIndex, term_emulator_options.ToArray());
+		term_emulator = term_emulator_options[selectedIndex];
+		extra_dash_c = EditorGUILayout.TextField(new GUIContent("nvim -c: "), extra_dash_c);
+	}
 
-		private static string extra_dash_c{
-			get => EditorPrefs.GetString("nvim_nvr_extra_dash_c_string", "");
-			set => EditorPrefs.SetString("nvim_nvr_extra_dash_c_string", value);
-		}
-
-		private static void CommandFieldsByPlatform(){
-			term_emulator = EditorGUILayout.TextField(new GUIContent("terminal: "), term_emulator);
-			extra_dash_c = EditorGUILayout.TextField(new GUIContent("nvim -c: "), extra_dash_c);
-		}
-
-		private static bool TryGetNvimPid(out object pid){
-			var psi = new ProcessStartInfo{
-				FileName = "zsh",
-				Arguments = $"-c 'netstat -an | grep LISTEN | grep {nvim_address}.{nvim_port}'",
-				RedirectStandardOutput = true,
-				UseShellExecute = false,
-				CreateNoWindow = true
-			};
-			using(var process = Process.Start(psi)){
-				process.WaitForExit();
-				var output = process.StandardOutput.ReadToEnd();
-				if(string.IsNullOrWhiteSpace(output)){
-					pid = -1;
-					return false;
-				}else{
-					pid = 0;
-					return true;
-				}
-			}
-		}
-
-		private static bool TryGetKittySocket(out string socket){
-			var tmpDir = new DirectoryInfo("/tmp");
-			var kittySocket = tmpDir.GetFiles("mykitty-*")
-				.OrderByDescending(f => f.LastWriteTime)
-				.FirstOrDefault();
-			if(kittySocket == null){
-				socket = "";
+	private static bool TryGetNvimPid(out object pid) {
+		var psi = new ProcessStartInfo {
+			FileName = "zsh",
+			Arguments = $"-c 'netstat -an | grep LISTEN | grep {nvim_address}.{nvim_port}'",
+			RedirectStandardOutput = true,
+			UseShellExecute = false,
+			CreateNoWindow = true
+		};
+		using (var process = Process.Start(psi)) {
+			process.WaitForExit();
+			var output = process.StandardOutput.ReadToEnd();
+			if (string.IsNullOrWhiteSpace(output)) {
+				pid = -1;
 				return false;
-			}else{
-				socket = kittySocket.FullName;
+			} else {
+				pid = 0;
 				return true;
 			}
 		}
+	}
 
-		private static bool OpenByPlatform(string projectPath, string filePath, int line, int column){
-			if(TryGetKittySocket(out var socket)){
-				if(TryGetNvimPid(out var pid)){
-					var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
-					var psi = new ProcessStartInfo{
-						FileName = "zsh",
-						Arguments = $"-lic 'nvr {arg}'",
-						CreateNoWindow = true,
-						UseShellExecute = false,
-					};
-					using(var process = Process.Start(psi)){
-						if(process == null) return false;
-					}
-				}else{
-					var arg = string.Format(term_start_args, extra_dash_c);
-					arg = CodeEditor.ParseArgument(arg, filePath, line, column);
-					var psi = new ProcessStartInfo{
-						FileName = term_emulator,
-						Arguments = $"@ --to unix:{socket} launch --type=os-window --cwd={projectPath} zsh -lic '{arg}'",
-						CreateNoWindow = true,
-						UseShellExecute = false,
-					};
-					using(var process = Process.Start(psi)){
-						if(process == null) return false;
-					}
-				}
-				using(var focusProcess = Process.Start(new ProcessStartInfo{
-					FileName = term_emulator,
-					Arguments = $"@ --to unix:{socket} focus-window",
-					CreateNoWindow = true,
-					UseShellExecute = false,
-				})){}
-			}else{
-				var dash_c = $"cd {projectPath}";
-				if(!string.IsNullOrWhiteSpace(extra_dash_c)){
-					dash_c = dash_c + " | " + extra_dash_c;
-				}
-				var arg = string.Format(term_start_args, dash_c);
-				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
-				var psi = new ProcessStartInfo{
+	private static bool OpenByPlatform(string projectPath, string filePath, int line, int column) {
+		if (term_emulator == "kitty") {
+			return OpenKitty(projectPath, filePath, line, column);
+		} else if (term_emulator == "ghostty") {
+			return OpenGhostty(projectPath, filePath, line, column);
+		}
+		return false;
+	}
+
+	private static bool TryGetKittySocket(out string socket) {
+		var tmpDir = new DirectoryInfo("/tmp");
+		var kittySocket = tmpDir.GetFiles("mykitty-*")
+			.OrderByDescending(f => f.LastWriteTime)
+			.FirstOrDefault();
+		if (kittySocket == null) {
+			socket = "";
+			return false;
+		} else {
+			socket = kittySocket.FullName;
+			return true;
+		}
+	}
+
+	private static bool OpenKitty(string projectPath, string filePath, int line, int column) {
+		if (TryGetKittySocket(out var socket)) {
+			if (TryGetNvimPid(out var pid)) {
+				var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
+				var psi = new ProcessStartInfo {
 					FileName = "zsh",
-					Arguments = $"-lic '{term_emulator} -d ~/ {arg}'",
+					Arguments = $"-lic 'nvr {arg}'",
 					CreateNoWindow = true,
 					UseShellExecute = false,
 				};
-				using(var process = Process.Start(psi)){
-					if(process == null) return false;
+				using (var process = Process.Start(psi)) {
+					if (process == null) return false;
+				}
+			} else {
+				var arg = string.Format(term_start_args, extra_dash_c);
+				arg = CodeEditor.ParseArgument(arg, filePath, line, column);
+				var psi = new ProcessStartInfo {
+					FileName = term_emulator,
+					Arguments = $"@ --to unix:{socket} launch --type=os-window --cwd={projectPath} zsh -lic '{arg}'",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+				};
+				using (var process = Process.Start(psi)) {
+					if (process == null) return false;
 				}
 			}
-			return true;
+			using (var focusProcess = Process.Start(new ProcessStartInfo {
+				FileName = term_emulator,
+				Arguments = $"@ --to unix:{socket} focus-window",
+				CreateNoWindow = true,
+				UseShellExecute = false,
+			})) { }
+		} else {
+			var dash_c = $"cd {projectPath}";
+			if (!string.IsNullOrWhiteSpace(extra_dash_c)) {
+				dash_c = dash_c + " | " + extra_dash_c;
+			}
+			var arg = string.Format(term_start_args, dash_c);
+			arg = CodeEditor.ParseArgument(arg, filePath, line, column);
+			var psi = new ProcessStartInfo {
+				FileName = "zsh",
+				Arguments = $"-lic '{term_emulator} -d ~/ {arg}'",
+				CreateNoWindow = true,
+				UseShellExecute = false,
+			};
+			using (var process = Process.Start(psi)) {
+				if (process == null) return false;
+			}
 		}
+		return true;
+	}
+
+	private static bool OpenGhostty(string projectPath, string filePath, int line, int column) {
+		if (TryGetNvimPid(out var pid)) {
+			var arg = CodeEditor.ParseArgument(nvr_args, filePath, line, column);
+			var psi = new ProcessStartInfo {
+				FileName = "zsh",
+				Arguments = $"-lic 'nvr {arg}'",
+				CreateNoWindow = true,
+				UseShellExecute = false,
+			};
+			using (var process = Process.Start(psi)) {
+				if (process == null) return false;
+			}
+		} else {
+			var dash_c = $"cd {projectPath}";
+			if (!string.IsNullOrWhiteSpace(extra_dash_c)) {
+				dash_c = dash_c + " | " + extra_dash_c;
+			}
+			var arg = string.Format(term_start_args, dash_c);
+			arg = CodeEditor.ParseArgument(arg, filePath, line, column);
+			var psi = new ProcessStartInfo {
+				FileName = "pbcopy",
+				Arguments = $"-lic '{term_emulator} -d ~/ {arg}'",
+				CreateNoWindow = true,
+				UseShellExecute = false,
+				RedirectStandardInput = true,
+			};
+			using (var process = Process.Start(psi)) {
+				if (process == null) return false;
+
+				process.StandardInput.Write(arg);
+				process.StandardInput.Close();
+				process.WaitForExit();
+
+				UnityEngine.Debug.Log("ghostty command copied to clipboard");
+			}
+		}
+		return true;
+	}
 
 
 #endif
