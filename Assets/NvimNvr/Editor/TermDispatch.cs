@@ -211,7 +211,7 @@ public class TermDispatch {
 
 	private static readonly List<string> term_emulator_options = new() { "kitty", "ghostty" };
 	private const string default_term_emulator = "kitty";
-	private static readonly string term_start_args = $"nvim $(File) +$(Line) -c \"{{0}}\" --listen {nvim_address}:{nvim_port}";
+	private static readonly string term_start_args = $"nvim $(File) +$(Line) -c '{{0}}' --listen {nvim_address}:{nvim_port}";
 	private static readonly string nvr_args = $"-s --servername {nvim_address}:{nvim_port} --nostart $(File) +$(Line)";
 
 	private static string term_emulator {
@@ -341,6 +341,13 @@ public class TermDispatch {
 			};
 			using (var process = Process.Start(psi)) {
 				if (process == null) return false;
+
+				using (var focusProcess = Process.Start(new ProcessStartInfo {
+					FileName = "zsh",
+					Arguments = $"-lic 'hs -c \"GhosttyFocus()\"'",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+				})) { }
 			}
 		} else {
 			var dash_c = $"cd {projectPath}";
@@ -349,21 +356,25 @@ public class TermDispatch {
 			}
 			var arg = string.Format(term_start_args, dash_c);
 			arg = CodeEditor.ParseArgument(arg, filePath, line, column);
-			var psi = new ProcessStartInfo {
+			var pbpsi = new ProcessStartInfo {
 				FileName = "pbcopy",
-				Arguments = $"-lic '{term_emulator} -d ~/ {arg}'",
 				CreateNoWindow = true,
 				UseShellExecute = false,
 				RedirectStandardInput = true,
 			};
-			using (var process = Process.Start(psi)) {
-				if (process == null) return false;
+			using (var pbProcess = Process.Start(pbpsi)) {
+				if (pbProcess == null) return false;
 
-				process.StandardInput.Write(arg);
-				process.StandardInput.Close();
-				process.WaitForExit();
+				pbProcess.StandardInput.Write(arg);
+				pbProcess.StandardInput.Close();
+				pbProcess.WaitForExit();
 
-				UnityEngine.Debug.Log("ghostty command copied to clipboard");
+				using (var hsProcess = Process.Start(new ProcessStartInfo {
+					FileName = "zsh",
+					Arguments = $"-lic 'hs -c \"GhosttyNewWindow()\"'",
+					CreateNoWindow = true,
+					UseShellExecute = false,
+				})) { }
 			}
 		}
 		return true;
