@@ -16,10 +16,12 @@ Linux:
 - **Neovim ```-c``` support**: Allows passing commands to Neovim on startup. The command can be set in Preferences.
 
 MacOS:
-- Only supports Kitty
-- (Optional) kitty remote control, by setting conf ```allow_remote_control yes``` and ```listen_on unix:/tmp/mykitty```
+- kitty, ghostty (waiting on **native** process / windows manipulation)
 - **Neovim ```-c``` support**: Allows passing commands to Neovim on startup. The command can be set in Preferences.
-- **Bring to front**: Precisely focuses the Kitty window with kitty remote control
+- **Bring to front**:
+  - Precisely focuses the Kitty window with kitty remote control
+    - Requires conf ```allow_remote_control yes``` and ```listen_on unix:/tmp/mykitty```
+  - Relies on Hammerspoon ([gist](https://gist.github.com/dssste/c8bcbabf2102b97bc2640a424c9ef4ab)) to manipulate ghostty windows
 
 Check ```TermDispatch.cs``` for more details.
 
