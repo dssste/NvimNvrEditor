@@ -230,6 +230,9 @@ public class TermDispatch {
 			selectedIndex = term_emulator_options.IndexOf(term_emulator);
 		}
 		selectedIndex = EditorGUILayout.Popup(new GUIContent("terminal: "), selectedIndex, term_emulator_options.ToArray());
+		if(selectedIndex == 1){
+			EditorGUILayout.HelpBox("ghostty window manipulation uses hammerspoon", MessageType.Warning);
+		}
 		term_emulator = term_emulator_options[selectedIndex];
 		extra_dash_c = EditorGUILayout.TextField(new GUIContent("nvim -c: "), extra_dash_c);
 	}
