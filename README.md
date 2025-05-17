@@ -36,4 +36,4 @@ https://github.com/dssste/NvimNvrEditor.git?path=/Assets/NvimNvr
 Go to Edit > Preferences > External Tools and select any ```nvim``` executable. This file is not invoked; it's simply used to inform the editor that our package will handle code editors. If locating the actual ```nvim``` executable is troublesome, you can create an empty file called ```nvim``` and point the editor to it. Under the hood, we run the nvr command, so make sure that the command is accessible.
 
 ### Setting Up Nvim
-There is not much to set up as long as you get the LSP stuff working. Omnisharp works fine for me. Highly recommand deselecting all in ```Generate .csproj files for``` to keep your sln small and let [omnisharp-extended-lsp.nvim](https://github.com/Hoffs/omnisharp-extended-lsp.nvim) cover external locations.
+There is not much to set up as long as you get the LSP stuff working. Both Omnisharp and [Roslyn](https://github.com/seblyng/roslyn.nvim) should work.
