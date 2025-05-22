@@ -443,7 +443,10 @@ namespace dss.editor.nvimnvr{
         {
             var escapedFullPath = SecurityElement.Escape(fullReference);
             escapedFullPath = escapedFullPath.NormalizePath();
-            projectBuilder.Append("    <Reference Include=\"").Append(Path.GetFileNameWithoutExtension(escapedFullPath)).Append("\">").Append(k_WindowsNewline);
+						var name = Path.GetFileNameWithoutExtension(escapedFullPath);
+						if (name.Contains("System.Numerics")) return;
+
+            projectBuilder.Append("    <Reference Include=\"").Append(name).Append("\">").Append(k_WindowsNewline);
             projectBuilder.Append("        <HintPath>").Append(escapedFullPath).Append("</HintPath>").Append(k_WindowsNewline);
             projectBuilder.Append("    </Reference>").Append(k_WindowsNewline);
         }
